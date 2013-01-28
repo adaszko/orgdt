@@ -4,6 +4,12 @@ What is it?
 This is a VimL port of [Org-mode-style date/time](http://orgmode.org/manual/The-date_002ftime-prompt.html#The-date_002ftime-prompt) input handling.
 
 
+Status
+======
+
+Currently just a library for use in Vim scripts.
+
+
 Installation
 ============
 
@@ -86,3 +92,9 @@ be parsed further.
 
     :echo dtparser#ParseDateTimeString('11am+2:15')
     [{'meridiem': 'am', 'base': 'today', 'hour': 11, 'type': 'absolute', 'duration': {'minutes': 15, 'hours': 2}}, '']
+
+
+License
+=======
+
+BSD3
