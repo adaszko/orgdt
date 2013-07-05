@@ -16,7 +16,7 @@ Installation
 Assuming you have Pathogen up and running:
 
     cd ~/.vim/bundle
-    git clone git://github.com/adaszko/org-mode-date-time.git
+    git clone git://github.com/adaszko/orgdt.vim.git
 
 
 Usage
