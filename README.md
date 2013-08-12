@@ -1,17 +1,17 @@
-What is it?
-===========
+# orgdt.vim
+
+
+## What is it?
 
 This is a VimL port of [Org-mode-style date/time](http://orgmode.org/manual/The-date_002ftime-prompt.html#The-date_002ftime-prompt) input handling.
 
 
-Status
-======
+## Status
 
 Currently just a library for use in Vim scripts.
 
 
-Installation
-============
+## Installation
 
 Assuming you have Pathogen up and running:
 
@@ -19,8 +19,7 @@ Assuming you have Pathogen up and running:
     git clone git://github.com/adaszko/orgdt.vim.git
 
 
-Usage
-=====
+## Usage
 
 The second element of resulting list is the remaining part of string that can
 be parsed further.
@@ -94,7 +93,6 @@ be parsed further.
     [{'meridiem': 'am', 'base': 'today', 'hour': 11, 'type': 'absolute', 'duration': {'minutes': 15, 'hours': 2}}, '']
 
 
-License
-=======
+## License
 
 BSD3
