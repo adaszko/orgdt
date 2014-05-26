@@ -1,4 +1,4 @@
-" Referencess::
+" References::
 " [1] http://orgmode.org/manual/The-date_002ftime-prompt.html#The-date_002ftime-prompt
 
 
@@ -18,7 +18,7 @@ function! s:RegEx(regex, string)
     " when the match was an empty string.  We use match() to differentiate
     " between these two cases.
     if empty(match) && match(a:string, regex) < 0
-	throw 'PARSING: RegEx: ' . a:regex . a:string
+        throw 'PARSING: RegEx: ' . a:regex . a:string
     endif
 
     return [match, strpart(a:string, strlen(match))]
@@ -65,38 +65,38 @@ function! s:Number(string)
     return [str2nr(token), rest]
 endfunction
 
-function! s:Sunday(string)
-    let [_, rest] = s:RegEx('\c\vsun(d(ay?)?)?', a:string)
-    return [0, rest]
-endfunction
-
 function! s:Monday(string)
     let [_, rest] = s:RegEx('\c\vmon(d(ay?)?)?', a:string)
-    return [1, rest]
+    return [0, rest]
 endfunction
 
 function! s:Tuesday(string)
     let [_, rest] = s:RegEx('\c\vtue(s(d(a(y?)?)?)?)?', a:string)
-    return [2, rest]
+    return [1, rest]
 endfunction
 
 function! s:Wednesday(string)
     let [_, rest] = s:RegEx('\c\vwed(n(e(s(d(ay?)?)?)?)?)?', a:string)
-    return [3, rest]
+    return [2, rest]
 endfunction
 
 function! s:Thursday(string)
     let [_, rest] = s:RegEx('\c\vthu(r(s(d(ay?)?)?)?)?', a:string)
-    return [4, rest]
+    return [3, rest]
 endfunction
 
 function! s:Friday(string)
     let [_, rest] = s:RegEx('\c\vfri(d(ay?)?)?', a:string)
-    return [5, rest]
+    return [4, rest]
 endfunction
 
 function! s:Saturday(string)
     let [_, rest] = s:RegEx('\c\vsat(u(r(d(ay?)?)?)?)?', a:string)
+    return [5, rest]
+endfunction
+
+function! s:Sunday(string)
+    let [_, rest] = s:RegEx('\c\vsun(d(ay?)?)?', a:string)
     return [6, rest]
 endfunction
 
@@ -195,21 +195,21 @@ function! s:Sequence(parsers, string) " {{{
     let rest = a:string
     let result = []
     for parser in a:parsers
-	let [token, rest] = call(parser, [rest])
-	let result = add(result, token)
-	" l:token can have different type in the next iteration
-	unlet token
+        let [token, rest] = call(parser, [rest])
+        let result = add(result, token)
+        " l:token can have different type in the next iteration
+        unlet token
     endfor
     return [result, rest]
 endfunction " }}}
 
 function! s:Alternative(parsers, string) " {{{
     for parser in a:parsers
-	try
-	    return call(parser, [a:string])
-	catch /^PARSING: /
-	    continue
-	endtry
+        try
+            return call(parser, [a:string])
+        catch /^PARSING: /
+            continue
+        endtry
     endfor
     throw 'PARSING: Alternative: ' . a:string
 endfunction " }}}
@@ -221,8 +221,8 @@ function! s:Optional(token, string) " {{{
     let [tokens, rest] = s:Alternative([a:token, 's:Empty'], a:string)
 
     if !empty(tokens)
-	" Make one-element list out of tokens if it matched
-	return [[tokens], rest]
+        " Make one-element list out of tokens if it matched
+        return [[tokens], rest]
     endif
 
     return [[], rest]
@@ -233,10 +233,10 @@ function! s:Many(token, string) " {{{
     let rest = a:string
     let result = []
     try
-	while 1
-	    let [token, rest] = call(a:token, [rest])
-	    let result = add(result, token)
-	endwhile
+        while 1
+            let [token, rest] = call(a:token, [rest])
+            let result = add(result, token)
+        endwhile
     catch /^PARSING: /
     endtry
     return [result, rest]
@@ -256,13 +256,13 @@ function! s:SepBy(sep, token, string) " {{{
     let rest = a:string
     let tokens = []
     try
-	let [match, rest] = call(a:token, [rest])
-	let tokens = add(tokens, match)
-	while 1
-	    let [_, rest] = call(a:sep, [rest])
-	    let [match, rest] = call(a:token, [rest])
-	    let tokens = add(tokens, match)
-	endwhile
+        let [match, rest] = call(a:token, [rest])
+        let tokens = add(tokens, match)
+        while 1
+            let [_, rest] = call(a:sep, [rest])
+            let [match, rest] = call(a:token, [rest])
+            let tokens = add(tokens, match)
+        endwhile
     catch /^PARSING: /
     endtry
     return [tokens, rest]
@@ -289,8 +289,8 @@ function! s:SlashedDate(string)
     let result.day = tokens[0]
     let result.month = tokens[2]
     if !empty(tokens[3])
-	let year = tokens[3][0]
-	let result.year = year[1]
+        let year = tokens[3][0]
+        let result.year = year[1]
     endif
 
     return [result, rest]
@@ -325,7 +325,7 @@ function! s:MonthDay(string)
     let result.month = tokens[0]
     let result.day = tokens[2]
     if !empty(tokens[3])
-	let result.year = tokens[3][0][1]
+        let result.year = tokens[3][0][1]
     endif
 
     return [result, rest]
@@ -400,7 +400,7 @@ function! s:HourMinuteOptionalMeridiem(string)
     let result = {}
     let result = extend(result, tokens[0])
     if !empty(tokens[1])
-	let result.meridiem = tokens[1][0]
+        let result.meridiem = tokens[1][0]
     endif
 
     return [result, rest]
@@ -424,7 +424,7 @@ function! s:TimeRange(string)
     let result = {}
     let result.start = tokens[0]
     if !empty(tokens[1])
-	let result.end = tokens[1][0][1]
+        let result.end = tokens[1][0][1]
     endif
 
     return [result, rest]
@@ -443,14 +443,15 @@ function! s:Duration(string)
     let result = {}
     let result.hours = tokens[0]
     if !empty(tokens[1])
-	let result.minutes = tokens[1][0][1]
+        let result.minutes = tokens[1][0][1]
     endif
     return [result, rest]
 endfunction
 
 function! s:TimeDuration(string)
     let [tokens, rest] = s:Sequence(['s:HourMinuteMeridiem', 's:Plus', 's:Duration'], a:string)
-    let result = tokens[0]
+    let result = {}
+    let result.start = tokens[0]
     let result.duration = tokens[2]
     return [result, rest]
 endfunction
@@ -466,7 +467,7 @@ endfunction
 function! s:DateOptionalTime(string)
     let [tokens, rest] = s:Sequence(['s:Date', 's:Spaces', 's:OptionalTime'], a:string)
     if empty(tokens[2])
-	return [tokens[0], rest]
+        return [tokens[0], rest]
     endif
     return [extend(tokens[0], tokens[2][0]), rest]
 endfunction
@@ -478,7 +479,7 @@ endfunction
 function! s:TimeOptionalDate(string)
     let [tokens, rest] = s:Sequence(['s:Time', 's:Spaces', 's:OptionalDate'], a:string)
     if empty(tokens[2])
-	return [tokens[0], rest]
+        return [tokens[0], rest]
     endif
     return [extend(tokens[0], tokens[2][0]), rest]
 endfunction
@@ -506,17 +507,17 @@ function! s:DateOffset(string)
     let [tokens, rest] = s:Sequence(['s:Number', 's:OptionalDateOffsetScale'], a:string)
 
     if empty(tokens[1])
-	return [{'days': tokens[0]}, rest]
+        return [{'days': tokens[0]}, rest]
     endif
 
     if type(tokens[1][0]) == type({})
-	return [{'weekdays': tokens[0], 'weekday': tokens[1][0]['weekday']}, rest]
+        return [{'weeks': tokens[0], 'weekday': tokens[1][0]['weekday']}, rest]
     else
-	if tokens[1][0] == 'weeks'
-	    return [{'weeks': tokens[0]}, rest]
-	elseif tokens[1][0] == 'days'
-	    return [{'days': tokens[0]}, rest]
-	endif
+        if tokens[1][0] == 'weeks'
+            return [{'weeks': tokens[0]}, rest]
+        elseif tokens[1][0] == 'days'
+            return [{'days': tokens[0]}, rest]
+        endif
     endif
 endfunction
 
@@ -533,7 +534,21 @@ function! s:RelativePastDateTime(string)
 endfunction
 
 function! s:RelativeDateTime(string)
-    return s:Alternative(['s:RelativeFutureDateTime', 's:RelativePastDateTime'], a:string)
+    let result = s:Alternative(['s:RelativeFutureDateTime', 's:RelativePastDateTime'], a:string)
+
+    if !has_key(result, 'days')
+        let result.days = 0
+    endif
+
+    if !has_key(result, 'months')
+        let result.months = 0
+    endif
+
+    if !has_key(result, 'years')
+        let result.years = 0
+    endif
+
+    return result
 endfunction
 
 function! s:AbsoluteDateTime(string)
@@ -549,9 +564,9 @@ endfunction
 function! s:TodayRelativeDateTime(string)
     let [tokens, rest] = s:Sequence(['s:TodaySymbol', 's:OptionalRelativeDateTime'], a:string)
 
-    let result = {'base': 'today'}
+    let result = {'base': 'current'}
     if !empty(tokens[1])
-	let result = extend(result, tokens[1][0])
+        let result = extend(result, tokens[1][0])
     endif
 
     return [result, rest]
@@ -562,7 +577,7 @@ function! s:DefaultDateRelativeDateTime(string)
 
     let result = {'base': 'default'}
     if !empty(tokens[1])
-	let result = extend(result, tokens[1][0])
+        let result = extend(result, tokens[1][0])
     endif
 
     return [result, rest]
@@ -572,7 +587,7 @@ function! s:DateTimeString(string)
     let [datetime, rest] = s:Alternative(['s:TodayRelativeDateTime', 's:RelativeDateTime', 's:DefaultDateRelativeDateTime', 's:AbsoluteDateTime'], a:string)
 
     if !has_key(datetime, 'base')
-	let datetime.base = 'today'
+        let datetime.base = 'current'
     endif
 
     return [datetime, rest]
@@ -580,9 +595,9 @@ endfunction
 
 function! dtparser#ParseDateTimeString(string)
     try
-	return s:DateTimeString(a:string)
+        return s:DateTimeString(a:string)
     catch /^PARSING: /
-	return [{}, '']
+        return [{}, '']
     endtry
 endfunction
 " }}}
@@ -610,6 +625,7 @@ function! s:TestParseDateTimeString()
     echo dtparser#ParseDateTimeString('+2w')
     echo dtparser#ParseDateTimeString('++5')
     echo dtparser#ParseDateTimeString('+2tue')
+    echo dtparser#ParseDateTimeString('-wed')
 
     echo dtparser#ParseDateTimeString('11am-1:15pm')
     echo dtparser#ParseDateTimeString('11am--1:15pm')
