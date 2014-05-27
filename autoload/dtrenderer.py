@@ -5,6 +5,11 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 
+DEFAULT_TIME_FORMAT = '%H:%M:%S'
+DEFAULT_DATE_FORMAT = '%Y-%m-%d'
+DEFAULT_DATE_TIME_FORMAT = '%Y-%m-%d %H:%M'
+
+
 class RenderException(Exception):
     pass
 
@@ -105,7 +110,7 @@ def _normalize_time_spec(timespec):
     return timespec
 
 
-def render(dtspec, current, default):
+def render_raising(dtspec, current, default):
     if 'start' in dtspec and 'end' in dtspec:
         start = _render_start(dtspec, current, default)
         normalized_end = _normalize_time_spec(dtspec['end'])
@@ -121,7 +126,7 @@ def render(dtspec, current, default):
     return _render_start(dtspec, current, default)
 
 
-def safe_render(dtspec, current=None, default=None):
+def render(dtspec, current=None, default=None):
     now = datetime.now()
     if current is None:
         current = now
@@ -129,8 +134,36 @@ def safe_render(dtspec, current=None, default=None):
         default = now
 
     try:
-        result = render(dtspec, current, default)
+        result = render_raising(dtspec, current, default)
     except:
-        result = ''
+        result = None
 
     return result
+
+
+def render_formatted(dtspec, current, default, start_format, end_format):
+    result = render(dtspec, current, default)
+
+    if result is None:
+        return ''
+
+    if isinstance(result, datetime) or isinstance(result, date):
+        return result.strftime(start_format)
+
+    if isinstance(result, tuple):
+        start, end = result
+        return (start.strftime(start_format), end.strftime(end_format))
+
+    assert False
+
+
+def render_time(dtspec, current=None, default=None, start_format=DEFAULT_TIME_FORMAT, end_format=DEFAULT_TIME_FORMAT):
+    return render_formatted(dtspec, current, default, start_format, end_format)
+
+
+def render_date(dtspec, current=None, default=None, start_format=DEFAULT_DATE_FORMAT, end_format=DEFAULT_DATE_FORMAT):
+    return render_formatted(dtspec, current, default, start_format, end_format)
+
+
+def render_date_time(dtspec, current=None, default=None, start_format=DEFAULT_DATE_TIME_FORMAT, end_format=DEFAULT_DATE_TIME_FORMAT):
+    return render_formatted(dtspec, current, default, start_format, end_format)

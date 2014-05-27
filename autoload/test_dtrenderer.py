@@ -25,7 +25,7 @@ def test_org_mode_docs_examples(base):
     assert render({'base': 'current', 'type': 'future', 'days': 0, 'months': 0, 'years': 0}, base) == base
     assert render({'base': 'current', 'type': 'future', 'days': 4, 'months': 0, 'years': 0}, base) == base + relativedelta(days=4)
     assert render({'base': 'current', 'type': 'future', 'weeks': 2, 'days': 0, 'months': 0, 'years': 0}, base) == base + relativedelta(weeks=2)
-    assert render({'base': 'default', 'type': 'future', 'days': 5, 'months': 0, 'years': 0}, base) == base + relativedelta(days=5)
+    assert render({'base': 'default', 'type': 'future', 'days': 5, 'months': 0, 'years': 0}, default=base) == base + relativedelta(days=5)
     assert render({'base': 'current', 'weeks': 2, 'type': 'future', 'weekday': 1}, base) == base + relativedelta(weeks=2, weekday=calendar.TUESDAY)
     assert render({'base': 'current', 'weeks': 1, 'type': 'past', 'weekday': 2, 'days': 0}, base) == base - relativedelta(weeks=1, weekday=calendar.WEDNESDAY)
 
