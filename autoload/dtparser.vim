@@ -373,7 +373,7 @@ function! s:DashedYearWeekNumber(string)
 endfunction
 
 function! s:Date(string)
-    return s:Alternative(['s:DashedDate', 's:SlashedDate', 's:DottedDate', 's:DayName', 's:MonthDay', 's:DayMonth', 's:WeekNumber', 's:YearWeekNumber', 's:DashedYearWeekNumber'], a:string)
+    return s:Alternative(['s:DashedDate', 's:SlashedDate', 's:DottedDate', 's:MonthDay', 's:DayMonth', 's:WeekNumber', 's:YearWeekNumber', 's:DashedYearWeekNumber'], a:string)
 endfunction
 
 function! s:Meridiem(string)
@@ -603,6 +603,12 @@ function! s:JustRelativeDateTime(string)
     return [tokens, rest]
 endfunction
 
+function! s:JustWeekDay(string)
+    let [tokens, rest] = s:DayName(a:string)
+    let result = extend({'base': 'current', 'type': 'future'}, tokens)
+    return [result, rest]
+endfunction
+
 function! s:EmptyDateTime(string)
     let [_, rest] = s:EndOfString(a:string)
 
@@ -647,6 +653,7 @@ function! s:DateTimeString(string)
                         \, 's:DefaultDateRelativeDateTime'
                         \, 's:JustRelativeDateTime'
                         \, 's:AbsoluteDateTime'
+                        \, 's:JustWeekDay'
                         \, 's:JustDefaultDateSymbol'
                         \, 's:JustTodaySymbol'
                         \, 's:EmptyDateTime'
@@ -687,6 +694,10 @@ function! s:TestParseDateTimeString()
     echo dtparser#ParseDateTimeString('++5')
     echo dtparser#ParseDateTimeString('+2tue')
     echo dtparser#ParseDateTimeString('-wed')
+
+    " 'wed' === '+0wed'
+    " '+wed' === '+1wed'
+    " '-wed' === '-1wed'
 
     echo dtparser#ParseDateTimeString('11am-1:15pm')
     echo dtparser#ParseDateTimeString('11am--1:15pm')

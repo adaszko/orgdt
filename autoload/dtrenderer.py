@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import date
+from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
 
@@ -31,6 +32,19 @@ def make_relative_delta(dtspec):
                          weekday=dtspec.get('weekday'))
 
 
+def adjust_year(year, base):
+    if year >= 1000:
+        return year
+
+    if year >= 100:
+        return base.year / 1000 * 1000 + year
+
+    if year >= 10:
+        return base.year / 100 * 100 + year
+
+    return base.year / 10 * 10 + year
+
+
 def _render_based(dtspec, base):
     if 'type' not in dtspec:
         raise TypeNotPresent(None)
@@ -47,16 +61,14 @@ def _render_based(dtspec, base):
         if 'weekday' in dtspec:
             return base + relativedelta(weekday=dtspec['weekday'])
 
-        return base + relativedelta(year=dtspec.get('year'),
+        year = adjust_year(dtspec['year'], base) if 'year' in dtspec else None
+        return base + relativedelta(year=year,
                                     month=dtspec.get('month'),
                                     day=dtspec.get('day'),
                                     hour=normalized_start.get('hour'),
                                     minute=normalized_start.get('minute'))
     elif dtspec['type'] == 'past':
-        fixed = dict(**dtspec)
-        if 'weeks' in fixed:
-            fixed['weeks'] -= 1
-        return base - make_relative_delta(fixed)
+        return base - make_relative_delta(dtspec)
     elif dtspec['type'] == 'future':
         return base + make_relative_delta(dtspec)
     else:
@@ -93,7 +105,7 @@ def _normalize_time_spec(timespec):
     return timespec
 
 
-def render(dtspec, current, default=None):
+def render(dtspec, current, default):
     if 'start' in dtspec and 'end' in dtspec:
         start = _render_start(dtspec, current, default)
         normalized_end = _normalize_time_spec(dtspec['end'])
@@ -107,3 +119,18 @@ def render(dtspec, current, default=None):
         return (start, end)
 
     return _render_start(dtspec, current, default)
+
+
+def safe_render(dtspec, current=None, default=None):
+    now = datetime.now()
+    if current is None:
+        current = now
+    if default is None:
+        default = now
+
+    try:
+        result = render(dtspec, current, default)
+    except:
+        result = ''
+
+    return result
