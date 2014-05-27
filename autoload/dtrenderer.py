@@ -96,13 +96,15 @@ def _render_start(dtspec, current, default):
 def _normalize_time_spec(timespec):
 
     """
-    >>> _normalize_time_spec({'meridiem': 'am', 'hour': 0)
+    >>> _normalize_time_spec({'meridiem': 'am', 'hour': 0})
     {'hour': 24, 'minute': 0}
     """
 
     if 'meridiem' in timespec:
         if timespec['meridiem'] not in ('am', 'pm'):
             raise UnknownMeridiemSpecifier(timespec['meridiem'])
+        if 'minute' not in timespec:
+            timespec['minute'] = 0
         if timespec['meridiem'] == 'pm':
             return {'hour': timespec['hour'] + 12, 'minute': timespec['minute']}
         return timespec
