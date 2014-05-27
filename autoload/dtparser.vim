@@ -28,6 +28,10 @@ function! s:Empty(string)
     return [[], a:string]
 endfunction
 
+function! s:EndOfString(string)
+    return s:RegEx('\v$', a:string)
+endfunction
+
 function! s:Spaces(string)
     return s:RegEx('\v\s*', a:string)
 endfunction
@@ -496,29 +500,46 @@ function! s:DateTime(string)
 endfunction
 
 function! s:DateOffsetScale(string)
-    return s:Alternative(['s:DaysSymbol', 's:WeeksSymbol', 's:DayName'], a:string)
+    return s:Alternative(['s:DaysSymbol', 's:DayName', 's:WeeksSymbol'], a:string)
 endfunction
 
 function! s:OptionalDateOffsetScale(string)
     return s:Optional('s:DateOffsetScale', a:string)
 endfunction
 
-function! s:DateOffset(string)
-    let [tokens, rest] = s:Sequence(['s:Number', 's:OptionalDateOffsetScale'], a:string)
-
-    if empty(tokens[1])
-        return [{'days': tokens[0]}, rest]
-    endif
-
-    if type(tokens[1][0]) == type({})
-        return [{'weeks': tokens[0], 'weekday': tokens[1][0]['weekday']}, rest]
+function! s:MakeScale(number, tokens)
+    if type(a:tokens) == type({})
+        return {'weeks': a:number, 'weekday': a:tokens['weekday']}
     else
-        if tokens[1][0] == 'weeks'
-            return [{'weeks': tokens[0]}, rest]
-        elseif tokens[1][0] == 'days'
-            return [{'days': tokens[0]}, rest]
+        if a:tokens == 'weeks'
+            return {'weeks': a:number}
+        elseif a:tokens == 'days'
+            return {'days': a:number}
         endif
     endif
+endfunction
+
+function! s:NumberOptionalDateOffsetScale(string)
+    let [tokens, rest] = s:Sequence(['s:Number', 's:OptionalDateOffsetScale'], a:string)
+
+    let number = tokens[0]
+    let scale = tokens[1]
+
+    if empty(scale)
+        return [{'days': number}, rest]
+    endif
+
+    return [s:MakeScale(number, scale[0]), rest]
+endfunction
+
+function! s:OptionalNumberDateOffsetScale(string)
+    let [tokens, rest] = s:Sequence(['s:OptionalNumber', 's:DateOffsetScale'], a:string)
+    let number = empty(tokens[0]) ? 1 : tokens[0]
+    return [s:MakeScale(number, tokens[1]), rest]
+endfunction
+
+function! s:DateOffset(string)
+    return s:Alternative(['s:NumberOptionalDateOffsetScale', 's:OptionalNumberDateOffsetScale'], a:string)
 endfunction
 
 function! s:RelativeFutureDateTime(string)
@@ -534,63 +555,102 @@ function! s:RelativePastDateTime(string)
 endfunction
 
 function! s:RelativeDateTime(string)
-    let result = s:Alternative(['s:RelativeFutureDateTime', 's:RelativePastDateTime'], a:string)
+    let [tokens, rest] = s:Alternative(['s:RelativeFutureDateTime', 's:RelativePastDateTime'], a:string)
 
-    if !has_key(result, 'days')
-        let result.days = 0
+    if !has_key(tokens, 'days')
+        let tokens.days = 0
     endif
 
-    if !has_key(result, 'months')
-        let result.months = 0
+    if !has_key(tokens, 'months')
+        let tokens.months = 0
     endif
 
-    if !has_key(result, 'years')
-        let result.years = 0
+    if !has_key(tokens, 'years')
+        let tokens.years = 0
     endif
 
-    return result
+    return [tokens, rest]
 endfunction
 
 function! s:AbsoluteDateTime(string)
     let [tokens, rest] = s:DateTime(a:string)
-    let tokens.type = 'absolute'
-    return [tokens, rest]
-endfunction
 
-function! s:OptionalRelativeDateTime(string)
-    return s:Optional('s:RelativeDateTime', a:string)
+    let result = {'base': 'current', 'type': 'absolute'}
+    let result = extend(result, tokens)
+
+    return [result, rest]
 endfunction
 
 function! s:TodayRelativeDateTime(string)
-    let [tokens, rest] = s:Sequence(['s:TodaySymbol', 's:OptionalRelativeDateTime'], a:string)
+    let [tokens, rest] = s:Sequence(['s:TodaySymbol', 's:RelativeDateTime'], a:string)
 
-    let result = {'base': 'current'}
-    if !empty(tokens[1])
-        let result = extend(result, tokens[1][0])
-    endif
+    let result = extend({'base': 'current'}, tokens[1])
 
     return [result, rest]
 endfunction
 
 function! s:DefaultDateRelativeDateTime(string)
-    let [tokens, rest] = s:Sequence(['s:DefaultDateSymbol', 's:OptionalRelativeDateTime'], a:string)
+    let [tokens, rest] = s:Sequence(['s:DefaultDateSymbol', 's:RelativeDateTime'], a:string)
+    let result = extend({'base': 'default'}, tokens[1])
+    return [result, rest]
+endfunction
 
-    let result = {'base': 'default'}
-    if !empty(tokens[1])
-        let result = extend(result, tokens[1][0])
-    endif
+function! s:JustRelativeDateTime(string)
+    let [tokens, rest] = s:RelativeDateTime(a:string)
+
+    let tokens.base = 'current'
+
+    return [tokens, rest]
+endfunction
+
+function! s:EmptyDateTime(string)
+    let [_, rest] = s:EndOfString(a:string)
+
+    let result = { 'base':      'current'
+                \, 'type':      'future'
+                \, 'years':     0
+                \, 'months':    0
+                \, 'days':      0
+                \}
+
+    return [result, rest]
+endfunction
+
+function! s:JustDefaultDateSymbol(string)
+    let [_, rest] = s:DefaultDateSymbol(a:string)
+
+    let result = { 'base':      'default'
+                \, 'type':      'future'
+                \, 'years':     0
+                \, 'months':    0
+                \, 'days':      0
+                \}
+
+    return [result, rest]
+endfunction
+
+function! s:JustTodaySymbol(string)
+    let [_, rest] = s:TodaySymbol(a:string)
+
+    let result = { 'base':      'current'
+                \, 'type':      'future'
+                \, 'years':     0
+                \, 'months':    0
+                \, 'days':      0
+                \}
 
     return [result, rest]
 endfunction
 
 function! s:DateTimeString(string)
-    let [datetime, rest] = s:Alternative(['s:TodayRelativeDateTime', 's:RelativeDateTime', 's:DefaultDateRelativeDateTime', 's:AbsoluteDateTime'], a:string)
-
-    if !has_key(datetime, 'base')
-        let datetime.base = 'current'
-    endif
-
-    return [datetime, rest]
+    return s:Alternative([ 's:TodayRelativeDateTime'
+                        \, 's:DefaultDateRelativeDateTime'
+                        \, 's:JustRelativeDateTime'
+                        \, 's:AbsoluteDateTime'
+                        \, 's:JustDefaultDateSymbol'
+                        \, 's:JustTodaySymbol'
+                        \, 's:EmptyDateTime'
+                        \], a:string)
 endfunction
 
 function! dtparser#ParseDateTimeString(string)
@@ -619,6 +679,7 @@ function! s:TestParseDateTimeString()
     echo dtparser#ParseDateTimeString('2012 w4 fri')
     echo dtparser#ParseDateTimeString('2012-w04-5')
 
+    echo dtparser#ParseDateTimeString('+')
     echo dtparser#ParseDateTimeString('+0')
     echo dtparser#ParseDateTimeString('.')
     echo dtparser#ParseDateTimeString('+4d')
