@@ -71,37 +71,37 @@ endfunction
 
 function! s:Monday(string)
     let [_, rest] = s:RegEx('\c\vmon(d(ay?)?)?', a:string)
-    return [0, rest]
+    return [1, rest]
 endfunction
 
 function! s:Tuesday(string)
     let [_, rest] = s:RegEx('\c\vtue(s(d(a(y?)?)?)?)?', a:string)
-    return [1, rest]
+    return [2, rest]
 endfunction
 
 function! s:Wednesday(string)
     let [_, rest] = s:RegEx('\c\vwed(n(e(s(d(ay?)?)?)?)?)?', a:string)
-    return [2, rest]
+    return [3, rest]
 endfunction
 
 function! s:Thursday(string)
     let [_, rest] = s:RegEx('\c\vthu(r(s(d(ay?)?)?)?)?', a:string)
-    return [3, rest]
+    return [4, rest]
 endfunction
 
 function! s:Friday(string)
     let [_, rest] = s:RegEx('\c\vfri(d(ay?)?)?', a:string)
-    return [4, rest]
+    return [5, rest]
 endfunction
 
 function! s:Saturday(string)
     let [_, rest] = s:RegEx('\c\vsat(u(r(d(ay?)?)?)?)?', a:string)
-    return [5, rest]
+    return [6, rest]
 endfunction
 
 function! s:Sunday(string)
     let [_, rest] = s:RegEx('\c\vsun(d(ay?)?)?', a:string)
-    return [6, rest]
+    return [7, rest]
 endfunction
 
 function! s:January(string)
@@ -164,6 +164,11 @@ function! s:December(string)
     return [12, rest]
 endfunction
 
+function! s:HoursSymbol(string)
+    let [_, rest] = s:RegEx('\ch', a:string)
+    return ['hours', rest]
+endfunction
+
 function! s:DaysSymbol(string)
     let [_, rest] = s:RegEx('\cd', a:string)
     return ['days', rest]
@@ -174,13 +179,28 @@ function! s:WeeksSymbol(string)
     return ['weeks', rest]
 endfunction
 
+function! s:MonthsSymbol(string)
+    let [_, rest] = s:RegEx('\cm', a:string)
+    return ['months', rest]
+endfunction
+
+function! s:YearsSymbol(string)
+    let [_, rest] = s:RegEx('\cy', a:string)
+    return ['years', rest]
+endfunction
+
 function! s:TodaySymbol(string)
     let [_, rest] = s:RegEx('\V.', a:string)
     return ['today', rest]
 endfunction
 
-function! s:DefaultDateSymbol(string)
-    let [_, rest] = s:RegEx('\V+', a:string)
+function! s:DefaultDatePlus(string)
+    let [_, rest] = s:RegEx('\V++', a:string)
+    return ['default', rest]
+endfunction
+
+function! s:DefaultDateMinus(string)
+    let [_, rest] = s:RegEx('\V--', a:string)
     return ['default', rest]
 endfunction
 
@@ -496,11 +516,11 @@ function! s:DayOfMonth(string)
 endfunction
 
 function! s:DateTime(string)
-    return s:Alternative(['s:DateOptionalTime', 's:TimeOptionalDate', 's:DayOfMonth'], a:string)
+    return s:Alternative(['s:DayName', 's:DateOptionalTime', 's:TimeOptionalDate', 's:DayOfMonth'], a:string)
 endfunction
 
 function! s:DateOffsetScale(string)
-    return s:Alternative(['s:DaysSymbol', 's:DayName', 's:WeeksSymbol'], a:string)
+    return s:Alternative(['s:HoursSymbol', 's:DaysSymbol', 's:DayName', 's:WeeksSymbol', 's:MonthsSymbol', 's:YearsSymbol'], a:string)
 endfunction
 
 function! s:OptionalDateOffsetScale(string)
@@ -511,10 +531,16 @@ function! s:MakeScale(number, tokens)
     if type(a:tokens) == type({})
         return {'weeks': a:number, 'weekday': a:tokens['weekday']}
     else
-        if a:tokens == 'weeks'
-            return {'weeks': a:number}
+        if a:tokens == 'hours'
+            return {'hours': a:number}
         elseif a:tokens == 'days'
             return {'days': a:number}
+        elseif a:tokens == 'weeks'
+            return {'weeks': a:number}
+        elseif a:tokens == 'months'
+            return {'months': a:number}
+        elseif a:tokens == 'years'
+            return {'years': a:number}
         endif
     endif
 endfunction
@@ -542,95 +568,47 @@ function! s:DateOffset(string)
     return s:Alternative(['s:NumberOptionalDateOffsetScale', 's:OptionalNumberDateOffsetScale'], a:string)
 endfunction
 
-function! s:RelativeFutureDateTime(string)
+function! s:TodayRelativeFutureDateTime(string)
     let [tokens, rest] = s:Sequence(['s:Plus', 's:DateOffset'], a:string)
     let tokens[1].type = 'future'
     return [tokens[1], rest]
 endfunction
 
-function! s:RelativePastDateTime(string)
+function! s:TodayRelativePastDateTime(string)
     let [tokens, rest] = s:Sequence(['s:Minus', 's:DateOffset'], a:string)
     let tokens[1].type = 'past'
     return [tokens[1], rest]
 endfunction
 
-function! s:RelativeDateTime(string)
-    let [tokens, rest] = s:Alternative(['s:RelativeFutureDateTime', 's:RelativePastDateTime'], a:string)
+function! s:TodayRelativeDateTime(string)
+    let [tokens, rest] = s:Alternative(['s:TodayRelativeFutureDateTime', 's:TodayRelativePastDateTime'], a:string)
+    let result = extend({'base': 'current'}, tokens)
+    return [result, rest]
+endfunction
 
-    if !has_key(tokens, 'days')
-        let tokens.days = 0
-    endif
+function! s:DefaultDateFutureDateTime(string)
+    let [tokens, rest] = s:Sequence(['s:DefaultDatePlus', 's:DateOffset'], a:string)
+    let tokens[1].type = 'future'
+    return [tokens[1], rest]
+endfunction
 
-    if !has_key(tokens, 'months')
-        let tokens.months = 0
-    endif
+function! s:DefaultDatePastDateTime(string)
+    let [tokens, rest] = s:Sequence(['s:DefaultDateMinus', 's:DateOffset'], a:string)
+    let tokens[1].type = 'past'
+    return [tokens[1], rest]
+endfunction
 
-    if !has_key(tokens, 'years')
-        let tokens.years = 0
-    endif
-
-    return [tokens, rest]
+function! s:DefaultDateRelativeDateTime(string)
+    let [tokens, rest] = s:Alternative(['s:DefaultDateFutureDateTime', 's:DefaultDatePastDateTime'], a:string)
+    let result = extend({'base': 'default'}, tokens)
+    return [result, rest]
 endfunction
 
 function! s:AbsoluteDateTime(string)
     let [tokens, rest] = s:DateTime(a:string)
 
-    let result = {'base': 'current', 'type': 'absolute'}
+    let result = {'base': 'default', 'type': 'absolute'}
     let result = extend(result, tokens)
-
-    return [result, rest]
-endfunction
-
-function! s:TodayRelativeDateTime(string)
-    let [tokens, rest] = s:Sequence(['s:TodaySymbol', 's:RelativeDateTime'], a:string)
-
-    let result = extend({'base': 'current'}, tokens[1])
-
-    return [result, rest]
-endfunction
-
-function! s:DefaultDateRelativeDateTime(string)
-    let [tokens, rest] = s:Sequence(['s:DefaultDateSymbol', 's:RelativeDateTime'], a:string)
-    let result = extend({'base': 'default'}, tokens[1])
-    return [result, rest]
-endfunction
-
-function! s:JustRelativeDateTime(string)
-    let [tokens, rest] = s:RelativeDateTime(a:string)
-
-    let tokens.base = 'current'
-
-    return [tokens, rest]
-endfunction
-
-function! s:JustWeekDay(string)
-    let [tokens, rest] = s:DayName(a:string)
-    let result = extend({'base': 'current', 'type': 'future'}, tokens)
-    return [result, rest]
-endfunction
-
-function! s:EmptyDateTime(string)
-    let [_, rest] = s:EndOfString(a:string)
-
-    let result = { 'base':      'current'
-                \, 'type':      'future'
-                \, 'years':     0
-                \, 'months':    0
-                \, 'days':      0
-                \}
-
-    return [result, rest]
-endfunction
-
-function! s:JustDefaultDateSymbol(string)
-    let [_, rest] = s:DefaultDateSymbol(a:string)
-
-    let result = { 'base':      'default'
-                \, 'type':      'future'
-                \, 'years':     0
-                \, 'months':    0
-                \, 'days':      0
-                \}
 
     return [result, rest]
 endfunction
@@ -638,11 +616,8 @@ endfunction
 function! s:JustTodaySymbol(string)
     let [_, rest] = s:TodaySymbol(a:string)
 
-    let result = { 'base':      'current'
-                \, 'type':      'future'
-                \, 'years':     0
-                \, 'months':    0
-                \, 'days':      0
+    let result = { 'base':  'current'
+                \, 'type':  'future'
                 \}
 
     return [result, rest]
@@ -651,12 +626,8 @@ endfunction
 function! s:DateTimeString(string)
     return s:Alternative([ 's:TodayRelativeDateTime'
                         \, 's:DefaultDateRelativeDateTime'
-                        \, 's:JustRelativeDateTime'
                         \, 's:AbsoluteDateTime'
-                        \, 's:JustWeekDay'
-                        \, 's:JustDefaultDateSymbol'
                         \, 's:JustTodaySymbol'
-                        \, 's:EmptyDateTime'
                         \], a:string)
 endfunction
 
@@ -664,45 +635,47 @@ function! dtparser#ParseDateTimeString(string)
     try
         return s:DateTimeString(a:string)
     catch /^PARSING: /
-        return [{}, '']
+        return [{}, a:string]
     endtry
 endfunction
 " }}}
 " {{{ Test cases
-function! s:TestParseDateTimeString()
-    " Examples taken from [1]
+function! dtparser#TestParseDateTimeString()
+    echo dtparser#ParseDateTimeString('3-2-5') == [{'day': 5, 'base': 'default', 'year': 3, 'type': 'absolute', 'month': 2}, '']
+    echo dtparser#ParseDateTimeString('2/5/3') == [{'day': 2, 'base': 'default', 'year': 3, 'type': 'absolute', 'month': 5}, '']
+    echo dtparser#ParseDateTimeString('14') == [{'day': 14, 'base': 'default', 'type': 'absolute'}, '']
+    echo dtparser#ParseDateTimeString('2/5') == [{'day': 2, 'base': 'default', 'type': 'absolute', 'month': 5}, '']
+    echo dtparser#ParseDateTimeString('Fri') == [{'base': 'default', 'type': 'absolute', 'weekday': 5}, '']
+    echo dtparser#ParseDateTimeString('sep 15') == [{'day': 15, 'base': 'default', 'type': 'absolute', 'month': 9}, '']
+    echo dtparser#ParseDateTimeString('feb 15') == [{'day': 15, 'base': 'default', 'type': 'absolute', 'month': 2}, '']
+    echo dtparser#ParseDateTimeString('sep 12 9') == [{'day': 12, 'base': 'default', 'year': 9, 'type': 'absolute', 'month': 9}, '']
+    echo dtparser#ParseDateTimeString('12:45') == [{'base': 'default', 'type': 'absolute', 'start': {'minute': 45, 'hour': 12}}, '']
+    echo dtparser#ParseDateTimeString('22 sept 0:34') == [{'day': 22, 'base': 'default', 'type': 'absolute', 'month': 9, 'start': {'minute': 34, 'hour': 0}}, '']
+    echo dtparser#ParseDateTimeString('w4') == [{'base': 'default', 'type': 'absolute', 'week': 4}, '']
+    echo dtparser#ParseDateTimeString('2012 w4 fri') == [{'base': 'default', 'year': 2012, 'type': 'absolute', 'week': 4, 'weekday': 5}, '']
+    echo dtparser#ParseDateTimeString('2012-w04-5') == [{'base': 'default', 'year': 2012, 'type': 'absolute', 'week': 4, 'weekday': 5}, '']
 
-    echo dtparser#ParseDateTimeString('3-2-5')
-    echo dtparser#ParseDateTimeString('2/5/3')
-    echo dtparser#ParseDateTimeString('14')
-    echo dtparser#ParseDateTimeString('2/5')
-    echo dtparser#ParseDateTimeString('Fri')
-    echo dtparser#ParseDateTimeString('sep 15')
-    echo dtparser#ParseDateTimeString('feb 15')
-    echo dtparser#ParseDateTimeString('sep 12 9')
-    echo dtparser#ParseDateTimeString('12:45')
-    echo dtparser#ParseDateTimeString('22 sept 0:34')
-    echo dtparser#ParseDateTimeString('w4')
-    echo dtparser#ParseDateTimeString('2012 w4 fri')
-    echo dtparser#ParseDateTimeString('2012-w04-5')
-
-    echo dtparser#ParseDateTimeString('+')
-    echo dtparser#ParseDateTimeString('+0')
-    echo dtparser#ParseDateTimeString('.')
-    echo dtparser#ParseDateTimeString('+4d')
-    echo dtparser#ParseDateTimeString('+2w')
-    echo dtparser#ParseDateTimeString('++5')
-    echo dtparser#ParseDateTimeString('+2tue')
-    echo dtparser#ParseDateTimeString('-wed')
+    echo dtparser#ParseDateTimeString('') == [{}, '']
+    echo dtparser#ParseDateTimeString('+') == [{}, '+']
+    echo dtparser#ParseDateTimeString('+0') == [{'base': 'current', 'type': 'future', 'days': 0}, '']
+    echo dtparser#ParseDateTimeString('.') == [{'base': 'current', 'type': 'future'}, '']
+    echo dtparser#ParseDateTimeString('+3h') == [{'base': 'current', 'type': 'future', 'hours': 3}, '']
+    echo dtparser#ParseDateTimeString('+4d') == [{'base': 'current', 'type': 'future', 'days': 4}, '']
+    echo dtparser#ParseDateTimeString('+2w') == [{'base': 'current', 'type': 'future', 'weeks': 2}, '']
+    echo dtparser#ParseDateTimeString('+3m') == [{'base': 'current', 'type': 'future', 'months': 3}, '']
+    echo dtparser#ParseDateTimeString('+3y') == [{'base': 'current', 'type': 'future', 'years': 3}, '']
+    echo dtparser#ParseDateTimeString('++5') == [{'base': 'default', 'type': 'future', 'days': 5}, '']
+    echo dtparser#ParseDateTimeString('+2tue') == [{'base': 'current', 'type': 'future', 'weekday': 2, 'weeks': 2}, '']
+    echo dtparser#ParseDateTimeString('-wed') == [{'base': 'current', 'type': 'past', 'weekday': 3, 'weeks': 1}, '']
 
     " 'wed' === '+0wed'
     " '+wed' === '+1wed'
     " '-wed' === '-1wed'
 
-    echo dtparser#ParseDateTimeString('11am-1:15pm')
-    echo dtparser#ParseDateTimeString('11am--1:15pm')
-    echo dtparser#ParseDateTimeString('11am+2:15')
-endfunction " }}}
+    echo dtparser#ParseDateTimeString('11am-1:15pm') == [{'base': 'default', 'type': 'absolute', 'end': {'meridiem': 'pm', 'minute': 15, 'hour': 1}, 'start': {'meridiem': 'am', 'hour': 11}}, '']
+    echo dtparser#ParseDateTimeString('11am--1:15pm') == [{'base': 'default', 'type': 'absolute', 'end': {'meridiem': 'pm', 'minute': 15, 'hour': 1}, 'start': {'meridiem': 'am', 'hour': 11}}, '']
+    echo dtparser#ParseDateTimeString('11am+2:15') == [{'base': 'default', 'type': 'absolute', 'duration': {'minutes': 15, 'hours': 2}, 'start': {'meridiem': 'am', 'hour': 11}}, '']
+endfunction
 
 
 let &cpo = s:save_cpo

@@ -2,12 +2,7 @@
 
 from datetime import date
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
-
-DEFAULT_TIME_FORMAT = '%H:%M:%S'
-DEFAULT_DATE_FORMAT = '%Y-%m-%d'
-DEFAULT_DATE_TIME_FORMAT = '%Y-%m-%d %H:%M'
+from dateutil.relativedelta import relativedelta, weekday
 
 
 class RenderException(Exception):
@@ -28,21 +23,93 @@ class UnknownDateTimeType(RenderException):
 class UnknownMeridiemSpecifier(RenderException):
     pass
 
+class UnknownRangeType(RenderException):
+    pass
 
-def make_relative_delta(dtspec):
-    return relativedelta(years=dtspec.get('years', 0),
-                         months=dtspec.get('months', 0),
-                         days=dtspec.get('days', 0),
-                         weeks=dtspec.get('weeks', 0),
-                         weekday=dtspec.get('weekday'))
+class UnrecognizedSpec(RenderException):
+    pass
 
 
-def adjust_year(year, base):
-    if year >= 1000:
-        return year
+def _render_time(dtspec, day):
+    if 'hour' in dtspec or 'minute' in dtspec:
+        return datetime(year=day.year, month=day.month, day=day.day, hour=dtspec.get('hour', 0), minute=dtspec.get('minute', 0))
 
+    return day
+
+
+def _render_absolute(dtspec, base):
+    if 'year' in dtspec and 'month' in dtspec and 'day' in dtspec:
+        day = date(year=dtspec['year'], month=dtspec['month'], day=dtspec['day'])
+        return _render_time(dtspec, day)
+
+    if 'month' in dtspec and 'day' in dtspec:
+        day = date(year=base.year, month=dtspec['month'], day=dtspec['day'])
+        if day < base:
+            day += relativedelta(years=1)
+        return _render_time(dtspec, day)
+
+    if 'day' in dtspec:
+        day = date(year=base.year, month=base.month, day=dtspec['day'])
+        if day < base:
+            day += relativedelta(months=1)
+        return _render_time(dtspec, day)
+
+    if 'year' in dtspec and 'week' in dtspec and 'weekday' in dtspec:
+        wday = weekday(dtspec['weekday'] - 1)
+        day = date(year=dtspec['year'], month=1, day=1) + relativedelta(weekday=wday, weeks=dtspec['week']-1)
+        return _render_time(dtspec, day)
+
+    if 'weekday' in dtspec:
+        wday = weekday(dtspec['weekday'] - 1)
+        day = base + relativedelta(weekday=wday)
+        return _render_time(dtspec, day)
+
+    if 'week' in dtspec:
+        wday = weekday(base.weekday())
+        day = date(year=base.year, month=1, day=1) + relativedelta(day=4, weekday=weekday(0, -1), weeks=dtspec['week']-1)
+        return _render_time(dtspec, day)
+
+    return _render_time(dtspec, base)
+
+
+def _make_relative_delta(dtspec, is_past):
+    if 'years' in dtspec:
+        return relativedelta(years=dtspec['years'])
+
+    if 'months' in dtspec:
+        return relativedelta(months=dtspec['months'])
+
+    if 'weeks' in dtspec and 'weekday' in dtspec:
+        n = -dtspec['weeks'] if is_past else dtspec['weeks'] + 1
+        wday = weekday(dtspec['weekday'] - 1, n)
+        return relativedelta(weekday=wday)
+
+    if 'weeks' in dtspec:
+        return relativedelta(weeks=dtspec['weeks'])
+
+    if 'weekday' in dtspec:
+        n = -1 if is_past else 1
+        wday = weekday(dtspec['weekday'] - 1, n)
+        return relativedelta(weekday=wday)
+
+    if 'days' in dtspec:
+        return relativedelta(days=dtspec['days'])
+
+    if 'hours' in dtspec and 'minutes' in dtspec:
+        return relativedelta(hours=dtspec['hours'], minutes=dtspec['minutes'])
+
+    if 'hours' in dtspec:
+        return relativedelta(hours=dtspec['hours'])
+
+    if 'minutes' in dtspec:
+        return relativedelta(minutes=dtspec['minutes'])
+
+    return relativedelta()
+
+
+def _normalize_year(year, base):
     if year >= 100:
-        return base.year / 1000 * 1000 + year
+        return year
 
     if year >= 10:
         return base.year / 100 * 100 + year
@@ -50,51 +117,21 @@ def adjust_year(year, base):
     return base.year / 10 * 10 + year
 
 
-def _render_based(dtspec, base):
-    if 'type' not in dtspec:
-        raise TypeNotPresent(None)
+def _render_type(dtspec, base):
+    without_type = dict((k, v) for k, v in dtspec.iteritems() if k != 'type')
 
     if dtspec['type'] == 'absolute':
-        normalized_start = _normalize_time_spec(dtspec['start']) if dtspec.get('start') else {}
+        if 'year' in dtspec:
+            without_type['year'] = _normalize_year(dtspec['year'], base)
+        return _render_absolute(without_type, base)
 
-        if 'week' in dtspec:
-            return date(year=dtspec.get('year', base.year),
-                        month=1,
-                        day=1) + relativedelta(weeks=dtspec['week'],
-                                               weekday=dtspec.get('weekday', base.weekday()))
+    if dtspec['type'] in ('future', 'past'):
+        return base + _make_relative_delta(without_type, dtspec['type'] == 'past')
 
-        if 'weekday' in dtspec:
-            return base + relativedelta(weekday=dtspec['weekday'])
-
-        year = adjust_year(dtspec['year'], base) if 'year' in dtspec else None
-        return base + relativedelta(year=year,
-                                    month=dtspec.get('month'),
-                                    day=dtspec.get('day'),
-                                    hour=normalized_start.get('hour'),
-                                    minute=normalized_start.get('minute'))
-    elif dtspec['type'] == 'past':
-        return base - make_relative_delta(dtspec)
-    elif dtspec['type'] == 'future':
-        return base + make_relative_delta(dtspec)
-    else:
-        raise UnknownDateTimeType(dtspec['type'])
-
-
-def _render_start(dtspec, current, default):
-    if not 'base' in dtspec:
-        raise BaseNotPresent()
-
-    if dtspec['base'] == 'current':
-        return _render_based(dtspec, current)
-    elif dtspec['base'] == 'default':
-        base = default if default is not None else current
-        return _render_based(dtspec, base)
-    else:
-        raise UnknownBaseType()
+    raise UnknownDateTimeType(dtspec['type'])
 
 
 def _normalize_time_spec(timespec):
-
     """
     >>> _normalize_time_spec({'meridiem': 'am', 'hour': 0})
     {'hour': 24, 'minute': 0}
@@ -112,60 +149,46 @@ def _normalize_time_spec(timespec):
     return timespec
 
 
-def render_raising(dtspec, current, default):
-    if 'start' in dtspec and 'end' in dtspec:
-        start = _render_start(dtspec, current, default)
+def _render_point(dtspec, default, current):
+    without_base = dict((k, v) for k, v in dtspec.iteritems() if k != 'base')
+
+    if dtspec['base'] == 'default':
+        return _render_type(without_base, default)
+
+    if dtspec['base'] == 'current':
+        return _render_type(without_base, current)
+
+    raise UnknownBaseType()
+
+
+def render(dtspec, default, current=None):
+    if 'start' not in dtspec:
+        return _render_point(dtspec, default, current)
+
+    pointized = dict((k, v) for k, v in dtspec.iteritems() if k != 'start')
+    normalized_start = _normalize_time_spec(dtspec['start'])
+    start_dtspec = dict(hour=normalized_start['hour'], minute=normalized_start['minute'], **pointized)
+    return _render_point(start_dtspec, default, current)
+
+
+def render_range(dtspec, default, current=None):
+    pointized = dict((k, v) for k, v in dtspec.iteritems() if k not in ('end', 'duration'))
+
+    rendered_start = render(dtspec, default, current)
+
+    if 'end' in dtspec:
         normalized_end = _normalize_time_spec(dtspec['end'])
-        end = start + relativedelta(hour=normalized_end['hour'], minute=normalized_end['minute'])
-        return (start, end)
+        end_dtspec = dict(hour=normalized_end['hour'], minute=normalized_end['minute'], **pointized)
+        rendered_end = _render_point(end_dtspec, default=rendered_start, current=None)
+        return (rendered_start, rendered_end)
 
-    if 'start' in dtspec and 'duration' in dtspec:
-        start = _render_start(dtspec, current, default)
-        duration = dtspec.get('duration', {})
-        end = start + relativedelta(hours=duration.get('hours', 0), minutes=duration.get('minutes', 0))
-        return (start, end)
+    if 'duration' in dtspec:
+        duration_dtspec = {'base': 'default', 'type': 'future'}
+        if 'hours' in dtspec['duration']:
+            duration_dtspec['hours'] = dtspec['duration']['hours']
+        if 'minutes' in dtspec['duration']:
+            duration_dtspec['minutes'] = dtspec['duration']['minutes']
+        rendered_duration = _render_point(duration_dtspec, default=rendered_start, current=None)
+        return (rendered_start, rendered_duration)
 
-    return _render_start(dtspec, current, default)
-
-
-def render(dtspec, current=None, default=None):
-    now = datetime.now()
-    if current is None:
-        current = now
-    if default is None:
-        default = now
-
-    try:
-        result = render_raising(dtspec, current, default)
-    except:
-        result = None
-
-    return result
-
-
-def render_formatted(dtspec, current, default, start_format, end_format):
-    result = render(dtspec, current, default)
-
-    if result is None:
-        return ''
-
-    if isinstance(result, datetime) or isinstance(result, date):
-        return result.strftime(start_format)
-
-    if isinstance(result, tuple):
-        start, end = result
-        return (start.strftime(start_format), end.strftime(end_format))
-
-    assert False
-
-
-def render_time(dtspec, current=None, default=None, start_format=DEFAULT_TIME_FORMAT, end_format=DEFAULT_TIME_FORMAT):
-    return render_formatted(dtspec, current, default, start_format, end_format)
-
-
-def render_date(dtspec, current=None, default=None, start_format=DEFAULT_DATE_FORMAT, end_format=DEFAULT_DATE_FORMAT):
-    return render_formatted(dtspec, current, default, start_format, end_format)
-
-
-def render_date_time(dtspec, current=None, default=None, start_format=DEFAULT_DATE_TIME_FORMAT, end_format=DEFAULT_DATE_TIME_FORMAT):
-    return render_formatted(dtspec, current, default, start_format, end_format)
+    raise UnknownRangeType(dtspec)
