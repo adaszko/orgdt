@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from dtrenderer import render, render_range
+from renderer import render, render_range
 
 
 # Test cases mostly come from Org-mode manual examples:
