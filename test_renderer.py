@@ -89,6 +89,11 @@ def test_future_empty():
     input = future({})
     assert render(input, base) == date(year=2006, month=6, day=13)
 
+def test_future_hours():
+    base = date(year=2006, month=6, day=13)
+    input = future({'hours': 3})
+    assert render(input, base) == datetime(year=2006, month=6, day=13, hour=3)
+
 def test_future_days():
     base = date(year=2006, month=6, day=13)
 
@@ -101,7 +106,6 @@ def test_future_days():
     five = future({'days': 5})
     assert render(five, base) == date(year=2006, month=6, day=18)
 
-
 def test_future_weeks():
     base = date(year=2006, month=6, day=13)
     input = future({'weeks': 2})
@@ -111,11 +115,6 @@ def test_future_weeks_weekday():
     base = date(year=2006, month=6, day=13)
     input = future({'weeks': 2, 'weekday': 2})
     assert render(input, base) == date(year=2006, month=6, day=27)
-
-def test_future_hours():
-    base = date(year=2006, month=6, day=13)
-    input = future({'hours': 3})
-    assert render(input, base) == datetime(year=2006, month=6, day=13, hour=3)
 
 def test_future_months():
     base = date(year=2006, month=6, day=13)
@@ -128,7 +127,32 @@ def test_future_years():
     assert render(input, base) == date(year=2009, month=6, day=13)
 
 
+def test_past_hours():
+    base = date(year=2006, month=6, day=13)
+    input = past({'hours': 3})
+    assert render(input, base) == datetime(2006, 6, 12, 21)
+
+def test_past_days():
+    base = date(year=2006, month=6, day=13)
+    input = past({'days': 5})
+    assert render(input, base) == date(year=2006, month=6, day=8)
+
+def test_past_weeks():
+    base = date(year=2006, month=6, day=13)
+    input = past({'weeks': 1})
+    assert render(input, base) == date(year=2006, month=6, day=6)
+
 def test_past_weekday():
     base = date(year=2006, month=6, day=13)
     input = past({'weekday': 3})
     assert render(input, base) == date(year=2006, month=6, day=7)
+
+def test_past_months():
+    base = date(year=2006, month=6, day=13)
+    input = past({'months': 3})
+    assert render(input, base) == date(year=2006, month=3, day=13)
+
+def test_past_years():
+    base = date(year=2006, month=6, day=13)
+    input = past({'years': 3})
+    assert render(input, base) == date(year=2003, month=6, day=13)

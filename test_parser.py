@@ -75,11 +75,9 @@ def test_relative_weekdays():
     # '+wed' === '+1wed'
     # '-wed' === '-1wed'
 
-
 def test_time_range():
     assert parse('11am-1:15pm') == ({'base': 'default', 'type': 'absolute', 'end': {'meridiem': 'pm', 'minute': 15, 'hour': 1}, 'start': {'meridiem': 'am', 'hour': 11}}, '')
     assert parse('11am--1:15pm') == ({'base': 'default', 'type': 'absolute', 'end': {'meridiem': 'pm', 'minute': 15, 'hour': 1}, 'start': {'meridiem': 'am', 'hour': 11}}, '')
-
 
 def test_time_duration():
     assert parse('11am+2:15') == ({'base': 'default', 'type': 'absolute', 'duration': {'minutes': 15, 'hours': 2}, 'start': {'meridiem': 'am', 'hour': 11}}, '')

@@ -1,7 +1,4 @@
-#!/usr/bin/env python
-
-from datetime import date
-from datetime import datetime
+from datetime               import date, datetime
 from dateutil.relativedelta import relativedelta, weekday
 
 
@@ -74,10 +71,10 @@ def _render_absolute(dtspec, base):
 
 def _make_relative_delta(dtspec, is_past):
     if 'years' in dtspec:
-        return relativedelta(years=dtspec['years'])
+        return (-1 if is_past else 1) * relativedelta(years=dtspec['years'])
 
     if 'months' in dtspec:
-        return relativedelta(months=dtspec['months'])
+        return (-1 if is_past else 1) * relativedelta(months=dtspec['months'])
 
     if 'weeks' in dtspec and 'weekday' in dtspec:
         n = -dtspec['weeks'] if is_past else dtspec['weeks'] + 1
@@ -85,7 +82,7 @@ def _make_relative_delta(dtspec, is_past):
         return relativedelta(weekday=wday)
 
     if 'weeks' in dtspec:
-        return relativedelta(weeks=dtspec['weeks'])
+        return (-1 if is_past else 1) * relativedelta(weeks=dtspec['weeks'])
 
     if 'weekday' in dtspec:
         n = -1 if is_past else 1
@@ -93,16 +90,16 @@ def _make_relative_delta(dtspec, is_past):
         return relativedelta(weekday=wday)
 
     if 'days' in dtspec:
-        return relativedelta(days=dtspec['days'])
+        return (-1 if is_past else 1) * relativedelta(days=dtspec['days'])
 
     if 'hours' in dtspec and 'minutes' in dtspec:
-        return relativedelta(hours=dtspec['hours'], minutes=dtspec['minutes'])
+        return (-1 if is_past else 1) * relativedelta(hours=dtspec['hours'], minutes=dtspec['minutes'])
 
     if 'hours' in dtspec:
-        return relativedelta(hours=dtspec['hours'])
+        return (-1 if is_past else 1) * relativedelta(hours=dtspec['hours'])
 
     if 'minutes' in dtspec:
-        return relativedelta(minutes=dtspec['minutes'])
+        return (-1 if is_past else 1) * relativedelta(minutes=dtspec['minutes'])
 
     return relativedelta()
 
@@ -162,6 +159,12 @@ def _render_point(dtspec, default, current):
 
 
 def render(dtspec, default, current=None):
+    """If `current' is not given, the value of `default' is assumed as its
+    value."""
+
+    if current is None:
+        current = default
+
     if 'start' not in dtspec:
         return _render_point(dtspec, default, current)
 
@@ -172,6 +175,9 @@ def render(dtspec, default, current=None):
 
 
 def render_range(dtspec, default, current=None):
+    if current is None:
+        current = default
+
     pointized = dict((k, v) for k, v in dtspec.iteritems() if k not in ('end', 'duration'))
 
     rendered_start = render(dtspec, default, current)
