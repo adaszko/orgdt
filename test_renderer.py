@@ -1,105 +1,134 @@
+import pytest
 from datetime import date, datetime
 from renderer import render, render_range
 
 
-# Test cases mostly come from Org-mode manual examples:
-# http://orgmode.org/manual/The-date_002ftime-prompt.html
+def absolute(d):
+    return dict(type='absolute', base='default', **d)
+
+def future(d):
+    return dict(type='future', base='default', **d)
+
+def past(d):
+    return dict(type='past', base='default', **d)
 
 
-def test_absolute():
+def test_absolute_year_month_day():
     base = date(year=2006, month=6, day=13)
-    absolute = lambda d: dict(type='absolute', base='default', **d)
+    input = absolute({'year': 3, 'month': 2, 'day': 5})
+    assert render(input, base) == date(year=2003, month=2, day=5)
 
-    a1 = absolute({'year': 3, 'month': 2, 'day': 5})
-    assert render(a1, base) == date(year=2003, month=2, day=5)
-
-    a2 = absolute({'year': 3, 'month': 2, 'day': 5})
-    assert render(a2, base) == date(year=2003, month=2, day=5)
-
-    a3 = absolute({'day': 14})
-    assert render(a3, base) == date(year=2006, month=6, day=14)
-
-    a4 = absolute({'day': 12})
-    assert render(a4, base) == date(year=2006, month=7, day=12)
-
-    a5 = absolute({'month': 2, 'day': 5})
-    assert render(a5, base) == date(year=2007, month=2, day=5)
-
-    a6 = absolute({'weekday': 5})
-    assert render(a6, base) == date(year=2006, month=6, day=16)
-
-    a7 = absolute({'month': 9, 'day': 15})
-    assert render(a7, base) == date(year=2006, month=9, day=15)
-
-    a8 = absolute({'month': 2, 'day': 15})
-    assert render(a8, base) == date(year=2007, month=2, day=15)
-
-    a9 = absolute({'year': 9, 'month': 9, 'day': 12})
-    assert render(a9, base) == date(year=2009, month=9, day=12)
-
-    a10 = absolute({'start': {'hour': 12, 'minute': 45}})
-    assert render(a10, base) == datetime(year=2006, month=6, day=13, hour=12, minute=45)
-
-    a11 = absolute({'month': 9, 'day': 22, 'start': {'hour': 0, 'minute': 34}})
-    assert render(a11, base) == datetime(year=2006, month=9, day=22, hour=0, minute=34)
-
-    a12 = absolute({'week': 4})
-    assert render(a12, base) == date(year=2006, month=1, day=23)
-
-    a13 = absolute({'year': 2012, 'week': 4, 'weekday': 5})
-    assert render(a13, base) == date(year=2012, month=1, day=27)
-
-    a14 = absolute({'year': 2012, 'week': 4, 'weekday': 5})
-    assert render(a14, base) == date(year=2012, month=1, day=27)
-
-    a15 = absolute({'start': {'hour': 11, 'meridiem': 'am'}, 'end': {'hour': 1, 'meridiem': 'pm', 'minute': 15}})
-    assert render_range(a15, base) == (datetime(year=2006, month=6, day=13, hour=11, minute=0), datetime(year=2006, month=6, day=13, hour=13, minute=15))
-
-    a16 = absolute({'start': {'hour': 11, 'meridiem': 'am'}, 'end': {'hour': 1, 'minute': 15, 'meridiem': 'pm'}})
-    assert render_range(a16, base) == (datetime(year=2006, month=6, day=13, hour=11, minute=0), datetime(year=2006, month=6, day=13, hour=13, minute=15))
-
-    a17 = absolute({'start': {'hour': 11, 'meridiem': 'am'}, 'duration': {'hours': 2, 'minutes': 15}})
-    assert render_range(a17, base) == (datetime(year=2006, month=6, day=13, hour=11, minute=0), datetime(year=2006, month=6, day=13, hour=13, minute=15))
-
-
-def test_future():
+def test_absolute_day_of_month_before_base():
     base = date(year=2006, month=6, day=13)
-    future = lambda d: dict(type='future', base='default', **d)
+    input = absolute({'day': 12})
+    assert render(input, base) == date(year=2006, month=7, day=12)
 
-    r1 = future({'days': 0})
-    assert render(r1, base) == date(year=2006, month=6, day=13)
-
-    r2 = future({})
-    assert render(r2, base) == date(year=2006, month=6, day=13)
-
-    r3 = future({'days': 4})
-    assert render(r3, base) == date(year=2006, month=6, day=17)
-
-    r4 = future({'days': 4})
-    assert render(r4, base) == date(year=2006, month=6, day=17)
-
-    r5 = future({'weeks': 2})
-    assert render(r5, base) == date(year=2006, month=6, day=27)
-
-    r6 = future({'days': 5})
-    assert render(r6, base) == date(year=2006, month=6, day=18)
-
-    r7 = future({'weeks': 2, 'weekday': 2})
-    assert render(r7, base) == date(year=2006, month=6, day=27)
-
-    r8 = future({'hours': 3})
-    assert render(r8, base) == datetime(year=2006, month=6, day=13, hour=3)
-
-    r9 = future({'months': 3})
-    assert render(r9, base) == date(year=2006, month=9, day=13)
-
-    r10 = future({'years': 3})
-    assert render(r10, base) == date(year=2009, month=6, day=13)
-
-
-def test_past():
+def test_absolute_day_of_month_after_base():
     base = date(year=2006, month=6, day=13)
-    past = lambda d: dict(type='past', base='default', **d)
+    input = absolute({'day': 14})
+    assert render(input, base) == date(year=2006, month=6, day=14)
 
-    r8 = past({'weekday': 3})
-    assert render(r8, base) == date(year=2006, month=6, day=7)
+def test_absolute_month_day():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'month': 2, 'day': 5})
+    assert render(input, base) == date(year=2007, month=2, day=5)
+
+def test_absolute_weekday():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'weekday': 5})
+    assert render(input, base) == date(year=2006, month=6, day=16)
+
+def test_absolute_month_day_before_base():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'month': 2, 'day': 15})
+    assert render(input, base) == date(year=2007, month=2, day=15)
+
+def test_absolute_month_day_after_base():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'month': 9, 'day': 15})
+    assert render(input, base) == date(year=2006, month=9, day=15)
+
+def test_absolute_year_month_day():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'year': 9, 'month': 9, 'day': 12})
+    assert render(input, base) == date(year=2009, month=9, day=12)
+
+def test_absolute_hour_minute():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'start': {'hour': 12, 'minute': 45}})
+    assert render(input, base) == datetime(year=2006, month=6, day=13, hour=12, minute=45)
+
+def test_absolute_month_day_hour_minute():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'month': 9, 'day': 22, 'start': {'hour': 0, 'minute': 34}})
+    assert render(input, base) == datetime(year=2006, month=9, day=22, hour=0, minute=34)
+
+def test_absolute_week():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'week': 4})
+    assert render(input, base) == date(year=2006, month=1, day=23)
+
+def test_absolute_year_week_weekday():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'year': 2012, 'week': 4, 'weekday': 5})
+    assert render(input, base) == date(year=2012, month=1, day=27)
+
+def test_absolute_time_range():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'start': {'hour': 11, 'meridiem': 'am'}, 'end': {'hour': 1, 'meridiem': 'pm', 'minute': 15}})
+    assert render_range(input, base) == (datetime(year=2006, month=6, day=13, hour=11, minute=0), datetime(year=2006, month=6, day=13, hour=13, minute=15))
+
+def test_absolute_time_duration():
+    base = date(year=2006, month=6, day=13)
+    input = absolute({'start': {'hour': 11, 'meridiem': 'am'}, 'duration': {'hours': 2, 'minutes': 15}})
+    assert render_range(input, base) == (datetime(year=2006, month=6, day=13, hour=11, minute=0), datetime(year=2006, month=6, day=13, hour=13, minute=15))
+
+
+def test_future_empty():
+    base = date(year=2006, month=6, day=13)
+    input = future({})
+    assert render(input, base) == date(year=2006, month=6, day=13)
+
+def test_future_days():
+    base = date(year=2006, month=6, day=13)
+
+    zero = future({'days': 0})
+    assert render(zero, base) == date(year=2006, month=6, day=13)
+
+    four = future({'days': 4})
+    assert render(four, base) == date(year=2006, month=6, day=17)
+
+    five = future({'days': 5})
+    assert render(five, base) == date(year=2006, month=6, day=18)
+
+
+def test_future_weeks():
+    base = date(year=2006, month=6, day=13)
+    input = future({'weeks': 2})
+    assert render(input, base) == date(year=2006, month=6, day=27)
+
+def test_future_weeks_weekday():
+    base = date(year=2006, month=6, day=13)
+    input = future({'weeks': 2, 'weekday': 2})
+    assert render(input, base) == date(year=2006, month=6, day=27)
+
+def test_future_hours():
+    base = date(year=2006, month=6, day=13)
+    input = future({'hours': 3})
+    assert render(input, base) == datetime(year=2006, month=6, day=13, hour=3)
+
+def test_future_months():
+    base = date(year=2006, month=6, day=13)
+    input = future({'months': 3})
+    assert render(input, base) == date(year=2006, month=9, day=13)
+
+def test_future_years():
+    base = date(year=2006, month=6, day=13)
+    input = future({'years': 3})
+    assert render(input, base) == date(year=2009, month=6, day=13)
+
+
+def test_past_weekday():
+    base = date(year=2006, month=6, day=13)
+    input = past({'weekday': 3})
+    assert render(input, base) == date(year=2006, month=6, day=7)
