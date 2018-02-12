@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 def test_dashed_date():
     base = date(year=2006, month=6, day=13)
-    dt,_ = parse('3-2-5')
+    dt, _ = parse('3-2-5')
     assert render(dt, base) == date(year=2003, month=2, day=5)
 
 def test_slashed_date():
