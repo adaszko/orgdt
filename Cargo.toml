@@ -2,8 +2,10 @@
 name = "orgdt"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "GPL-3.0"
+description = "Emacs' org-mode date/time parser and renderer"
+homepage = "https://github.com/adaszko/orgdt"
+keywords = ["parser", "nom", "org-mode", "emacs"]
 
 [dependencies]
 chrono = "0.4"
